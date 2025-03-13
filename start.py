@@ -49,7 +49,7 @@ def compute_crossval(param, K_train, y_train):
     return np.mean(val_scores)
 
 
-def compute_kernels(dataset, df, df_test):
+def compute_kernel_entries(dataset, df, df_test):
     K_train, K_test = np.zeros((2000, 2000)), np.zeros((1000, 2000))
 
     with open("kernel_configs.yaml", "r") as file:
@@ -68,7 +68,7 @@ def main_dataset(dataset):
     print('\n---------------- DATASET', dataset, '------------------------------------------------')
     df_train, y_train = load_data(dataset)
     df_test, _ = load_data(dataset, train=False)
-    K_train, K_test = compute_kernels(dataset, df_train, df_test)
+    K_train, K_test = compute_kernel_entries(dataset, df_train, df_test)
 
     C = C_VALUES[dataset]
     crossval_score = compute_crossval(C, K_train, y_train)
