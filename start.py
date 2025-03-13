@@ -1,17 +1,16 @@
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import StratifiedKFold
-from tee import StdoutTee
-from time import strftime
 import os, yaml, warnings
 warnings.filterwarnings("ignore")
+from sklearn.model_selection import StratifiedKFold
 
-from svm import SVM
+from svm import C_SVM
 from kernels import MismatchKernel, SpectrumKernel, SubstringKernel
 
 
 KERNEL_CLASSES = {"spectrum": SpectrumKernel, "mismatch": MismatchKernel, "substring": SubstringKernel}
 C_VALUES = {'0': 0.3, '1': 0.5, '2': 0.33}
+
 
 def load_kernel(kernel, dataset, params, df, df_test):
     filename = f"{kernel}_{'_'.join(map(str, params))}"
@@ -27,17 +26,16 @@ def load_kernel(kernel, dataset, params, df, df_test):
         np.save(kernel_path_train, K_train, allow_pickle=False)
         np.save(kernel_path_test, K_test, allow_pickle=False)
         print(f"Successfully saved {kernel} kernel matrix in {kernel_path_train} and {kernel_path_test}")
+    
     return K_train, K_test
-
 
 def load_data(dataset, train=True):
     df = pd.read_csv(f"data/X{'tr' if train else 'te'}{dataset}.csv", index_col=0)
     y = pd.read_csv(f"data/Ytr{dataset}.csv", index_col=0)['Bound'].values.ravel() if train else None
     return df, y
 
-
-def compute_crossval(param, K_train, y_train):
-    clf, cv = SVM(lbda=1/(2*2000*param)), StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+def compute_crossval(C, K_train, y_train):
+    clf, cv = C_SVM(C=C), StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     train_scores, val_scores = [], []
 
     for train_idx, val_idx in cv.split(K_train, y_train):
@@ -47,7 +45,6 @@ def compute_crossval(param, K_train, y_train):
         val_scores.append(clf.score(K_val_split, y_train[val_idx]))
 
     return np.mean(val_scores)
-
 
 def compute_kernel_entries(dataset, df, df_test):
     K_train, K_test = np.zeros((2000, 2000)), np.zeros((1000, 2000))
@@ -63,39 +60,44 @@ def compute_kernel_entries(dataset, df, df_test):
 
     return K_train, K_test
 
-
 def main_dataset(dataset):
     print('\n---------------- DATASET', dataset, '------------------------------------------------')
     df_train, y_train = load_data(dataset)
     df_test, _ = load_data(dataset, train=False)
-    K_train, K_test = compute_kernel_entries(dataset, df_train, df_test)
+
+    kernel_path_train, kernel_path_test = f'final_kernel_matrices/K_train_{dataset}.npy', f'final_kernel_matrices/K_test_{dataset}.npy'
+    try :
+        K_train, K_test = np.load(kernel_path_train), np.load(kernel_path_test)
+        print(f"Successfully loaded kernel matrices for this dataset from {kernel_path_train} and {kernel_path_test}.")
+    except IOError:
+        print(f"No kernel matrix found for this dataset. Computing kernel matrix...")
+        K_train, K_test = compute_kernel_entries(dataset, df_train, df_test)
+        np.save(kernel_path_train, K_train, allow_pickle=False)
+        np.save(kernel_path_test, K_test, allow_pickle=False)
 
     C = C_VALUES[dataset]
     crossval_score = compute_crossval(C, K_train, y_train)
     print(crossval_score)
 
-    clf = SVM(lbda=1/(2*2000*C)).fit(K_train, y_train)
+    clf = C_SVM(C=C).fit(K_train, y_train)
     predictions_df = pd.Series(data=clf.predict(K_test), name='Bound', index=df_test.index)
 
     return predictions_df, crossval_score
 
-
 def main():
-    os.makedirs("logs", exist_ok=True)
+    os.makedirs("final_kernel_matrices", exist_ok=True)
     os.makedirs("kernel_matrices", exist_ok=True)
-    model_path = f'logs/{strftime("model_%d_%m_%H_%M")}'
     
-    with StdoutTee(f"{model_path}.log", 'w', 1):
-        results = [main_dataset(dataset) for dataset in ['0','1','2']]
-        predictions, cv_scores = zip(*results)
-        df_pred = pd.concat(predictions, axis=0)
-        
-        print('\n---------------- SUMMARY ------------------------------------------------')
-        for dataset, score in zip(['0','1','2'], cv_scores):
-            print(f'Dataset {dataset} : {score}')
-        print(f'Average: {np.mean(cv_scores)}')
+    results = [main_dataset(dataset) for dataset in ['0','1','2']]
+    predictions, cv_scores = zip(*results)
+    df_pred = pd.concat(predictions, axis=0)
+    
+    print('\n---------------- SUMMARY ------------------------------------------------')
+    for dataset, score in zip(['0','1','2'], cv_scores):
+        print(f'Dataset {dataset} : {score}')
+    print(f'Average: {np.mean(cv_scores)}')
 
-        df_pred.to_csv(f'{model_path}_submission.csv', header=True)
+    df_pred.to_csv(f'Yte.csv', header=True)
 
 
 if __name__ == "__main__":
