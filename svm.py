@@ -2,8 +2,6 @@ import numpy as np
 import qpsolvers
 from sklearn.base import BaseEstimator, ClassifierMixin
 
-def to_binary(y):
-    return ((y + 1) / 2).astype(int)
 
 class SVM(BaseEstimator, ClassifierMixin):
     def __init__(self, lbda=1.0):
@@ -15,10 +13,8 @@ class SVM(BaseEstimator, ClassifierMixin):
 
     def fit(self, K, y):
         y = 2*y - 1 # sign
-
         n = len(y)
-
-        q = - y.astype(float)
+        q = -y.astype(float)
         P = K
         G = np.zeros((2 * n, n))
         G[:n, :] = - np.diag(y)
@@ -35,4 +31,4 @@ class SVM(BaseEstimator, ClassifierMixin):
         return self
 
     def predict(self, K):
-        return to_binary(np.sign(K @ self.alpha_))
+        return (((np.sign(K @ self.alpha_))+ 1) / 2).astype(int)

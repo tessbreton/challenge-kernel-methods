@@ -11,7 +11,7 @@ from kernels import MismatchKernel, SpectrumKernel, SubstringKernel
 
 
 KERNEL_CLASSES = {"spectrum": SpectrumKernel, "mismatch": MismatchKernel, "substring": SubstringKernel}
-C_VALUES = {'0': 0.31, '1': 0.4, '2': 0.18}
+C_VALUES = {'0': 0.3, '1': 0.5, '2': 0.33}
 
 def load_kernel(kernel, dataset, params, df, df_test):
     filename = f"{kernel}_{'_'.join(map(str, params))}"
@@ -31,13 +31,13 @@ def load_kernel(kernel, dataset, params, df, df_test):
 
 
 def load_data(dataset, train=True):
-    df = pd.read_csv(f"data/X{'tr' if train else 'te'}{dataset}.csv")
+    df = pd.read_csv(f"data/X{'tr' if train else 'te'}{dataset}.csv", index_col=0)
     y = pd.read_csv(f"data/Ytr{dataset}.csv", index_col=0)['Bound'].values.ravel() if train else None
     return df, y
 
 
 def compute_crossval(param, K_train, y_train):
-    clf, cv = SVM(lbda=1/(2*2000*param)), StratifiedKFold(n_splits=5)
+    clf, cv = SVM(lbda=1/(2*2000*param)), StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     train_scores, val_scores = [], []
 
     for train_idx, val_idx in cv.split(K_train, y_train):
@@ -64,13 +64,13 @@ def compute_kernels(dataset, df, df_test):
     return K_train, K_test
 
 
-def main_for_dataset(dataset):
+def main_dataset(dataset):
     print('\n---------------- DATASET', dataset, '------------------------------------------------')
     df_train, y_train = load_data(dataset)
     df_test, _ = load_data(dataset, train=False)
     K_train, K_test = compute_kernels(dataset, df_train, df_test)
 
-    C = C_VALUES.get(dataset, 1)
+    C = C_VALUES[dataset]
     crossval_score = compute_crossval(C, K_train, y_train)
     print(crossval_score)
 
@@ -86,7 +86,7 @@ def main():
     model_path = f'logs/{strftime("model_%d_%m_%H_%M")}'
     
     with StdoutTee(f"{model_path}.log", 'w', 1):
-        results = [main_for_dataset(dataset) for dataset in ['0','1','2']]
+        results = [main_dataset(dataset) for dataset in ['0','1','2']]
         predictions, cv_scores = zip(*results)
         df_pred = pd.concat(predictions, axis=0)
         

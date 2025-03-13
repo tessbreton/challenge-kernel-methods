@@ -68,12 +68,11 @@ class MismatchKernel:
 
         self.fitted_ = False
         self.fitted_on_ = None
-        self.Letters = ['A', 'C', 'G', 'T']
+        self.letters = ['A', 'C', 'G', 'T']
 
     def fit(self, S):
         for s in tqdm(S):
             self._fit_string(s)
-
         self.fitted_ = True
         self.fitted_on_ = S
 
@@ -94,21 +93,14 @@ class MismatchKernel:
 
         for full_sub in self._substrings(s, self.k):
             for i in range(len(full_sub)):
-                for letter in self.Letters:
+                for letter in self.letters:
                     missmatch = letter == full_sub[i]
                     full_sub_copy = full_sub[:i] + letter + full_sub[i + 1:]
                     self.trie.add(id, full_sub_copy, int(missmatch))
 
     def _build_kernel(self, T, S):
-        T_ids = [
-            self.fitted_sequences[t]
-            for t in T
-        ]
-
-        S_ids = [
-            self.fitted_sequences[s]
-            for s in S
-        ]
+        T_ids = [self.fitted_sequences[t] for t in T]
+        S_ids = [self.fitted_sequences[s] for s in S]
 
         dot_products = defaultdict(float)
         squared_norms = defaultdict(float)
@@ -141,10 +133,7 @@ class MismatchKernel:
 
     @staticmethod
     def _substrings(s, k):
-        return [
-            s[i:i + k]
-            for i in range(len(s) - k + 1)
-        ]
+        return [s[i:i + k] for i in range(len(s) - k + 1)]
     
 
 class TrieNodeSpectrum:
@@ -329,9 +318,7 @@ class SubstringKernel:
                 for s_idx in node_ids & set_S_ids:
                     dot_products[t_idx, s_idx] += self.weight ** (node.counts[t_idx] + node.counts[s_idx])
         
-        return np.array([
-            [dot_products[t, s] / np.sqrt(squared_norms[t] * squared_norms[s]) for s in S_ids] for t in T_ids
-        ])
+        return np.array([[dot_products[t, s] / np.sqrt(squared_norms[t] * squared_norms[s]) for s in S_ids] for t in T_ids])
     
     @staticmethod
     def _substrings(s, k):

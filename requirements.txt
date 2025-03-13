@@ -5,3 +5,4 @@ pyyaml
 tee
 qpsolvers
 cvxopt
+tqdm
