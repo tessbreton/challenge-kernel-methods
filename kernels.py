@@ -3,6 +3,7 @@ import itertools
 import numpy as np
 from tqdm import tqdm
 
+
 # ----------------------- TRIE NODES ---------------------------------------------------------------------------
 class TrieNode:
     def __init__(self, depth=0):
@@ -41,6 +42,7 @@ class TrieNodeSubstring(TrieNode):
     def create_child(self):
         return TrieNodeSubstring(depth=self.depth + 1)
 
+
 # ----------------------- TRIES ---------------------------------------------------------------------------
 class TrieSpectrum:
     def __init__(self):
@@ -54,13 +56,13 @@ class TrieSpectrum:
 
     @property
     def nodes(self):
-        return iter(self.root)
+        yield from self.root
 
     @property
     def leaves(self):
-        return filter(lambda node: node.is_leaf(), self.root)
+        yield from filter(lambda node: node.is_leaf(), self.nodes)
 
-class TrieMismatch:
+class TrieMismatch(TrieSpectrum):
     def __init__(self, seq_size):
         self.root = TrieNodeMismatch()
         self.seq_size = seq_size
@@ -71,18 +73,7 @@ class TrieMismatch:
             node = node.children[c]
         node.counts[id] = n_miss if id not in node.counts else min(node.counts[id], n_miss)
 
-    @property
-    def nodes(self):
-        for node in self.root:
-            yield node
-
-    @property
-    def leaves(self):
-        for node in self.nodes:
-            if node.is_leaf():
-                yield node
-
-class TrieSubstring:
+class TrieSubstring(TrieSpectrum):
     def __init__(self, seq_size):
         self.root = TrieNodeSubstring()
         self.seq_size = seq_size
@@ -92,14 +83,6 @@ class TrieSubstring:
         for c in s:
             node = node.children[c]
         node.counts[id] = min(node.counts.get(id, jumps), jumps)
-
-    @property
-    def nodes(self):
-        yield from self.root
-
-    @property
-    def leaves(self):
-        yield from filter(lambda node: node.is_leaf(), self.nodes)
 
 
 # ------------------- KERNELS ---------------------------------------------------------------------------
@@ -149,7 +132,6 @@ class MismatchKernel(Kernel):
     def __init__(self, k):
         super().__init__(k)
         self.n_miss = 1
-        self.weight = 0.8
         self.trie = TrieMismatch(k)
         self.letters = ['A', 'C', 'G', 'T']
 
@@ -202,7 +184,6 @@ class SubstringKernel(Kernel):
     def __init__(self, k):
         super().__init__(k)
         self.jump = 2
-        self.weight = 0.8
         self.trie = TrieSubstring(k)
 
     def _fit_string(self, s):
