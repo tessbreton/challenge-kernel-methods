@@ -1,11 +1,9 @@
 import numpy as np
 import qpsolvers
-from sklearn.base import BaseEstimator, ClassifierMixin
 
-
-class SVM(BaseEstimator, ClassifierMixin):
-    def __init__(self, lbda=1.0):
-        self.lbda = lbda
+class C_SVM:
+    def __init__(self, C):
+        self.C = C
 
     @property
     def _pairwise(self):
@@ -20,7 +18,7 @@ class SVM(BaseEstimator, ClassifierMixin):
         G[:n, :] = - np.diag(y)
         G[n:, :] = np.diag(y)
         h = np.zeros(2 * n)
-        h[n:] = 1 / (2 * self.lbda * n)
+        h[n:] = 2000*self.C /n
 
         alpha = qpsolvers.solve_qp(P, q, G, h, solver='cvxopt')
 
@@ -32,3 +30,6 @@ class SVM(BaseEstimator, ClassifierMixin):
 
     def predict(self, K):
         return (((np.sign(K @ self.alpha_))+ 1) / 2).astype(int)
+    
+    def score(self, K, y):
+        return np.mean(self.predict(K) == y)
