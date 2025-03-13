@@ -44,7 +44,7 @@ class TrieNodeSubstring(TrieNode):
 
 
 # ----------------------- TRIES ---------------------------------------------------------------------------
-class TrieSpectrum:
+class Trie:
     def __init__(self):
         self.root = TrieNode()
 
@@ -62,7 +62,7 @@ class TrieSpectrum:
     def leaves(self):
         yield from filter(lambda node: node.is_leaf(), self.nodes)
 
-class TrieMismatch(TrieSpectrum):
+class TrieMismatch(Trie):
     def __init__(self, seq_size):
         self.root = TrieNodeMismatch()
         self.seq_size = seq_size
@@ -73,7 +73,7 @@ class TrieMismatch(TrieSpectrum):
             node = node.children[c]
         node.counts[id] = n_miss if id not in node.counts else min(node.counts[id], n_miss)
 
-class TrieSubstring(TrieSpectrum):
+class TrieSubstring(Trie):
     def __init__(self, seq_size):
         self.root = TrieNodeSubstring()
         self.seq_size = seq_size
@@ -92,7 +92,7 @@ class Kernel:
         self.fitted_sequences = {}
         self.next_id = 0
         self.fitted_on_ = None
-        self.trie = TrieSpectrum()
+        self.trie = Trie()
         self.weight = 0.8
     
     def _build_kernel(self, T, S):
@@ -151,10 +151,6 @@ class MismatchKernel(Kernel):
 
     
 class SpectrumKernel(Kernel):
-    def __init__(self, k):
-        super().__init__(k)
-        self.trie = TrieSpectrum()
-
     def _fit_string(self, s):
         if s in self.fitted_sequences:
             return
